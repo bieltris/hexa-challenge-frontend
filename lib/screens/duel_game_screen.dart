@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/rank.dart';
+import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
 import '../widgets/goal_painter.dart';
+import '../widgets/rank_badge.dart';
 
 class DuelGameScreen extends StatefulWidget {
   final Map<String, dynamic> data; // duel_start payload
@@ -32,6 +35,7 @@ class _DuelGameScreenState extends State<DuelGameScreen>
   late String _duelId;
   late String _oppName;
   late String _oppSala;
+  PlayerMe? _oppMe;
   late bool _sameSala;
   late Map<String, dynamic> _consecutive;
 
@@ -92,6 +96,7 @@ class _DuelGameScreenState extends State<DuelGameScreen>
     _oppName = opp['name'] as String;
     _oppSala = opp['sala'] as String;
     _consecutive = {};
+    _loadOpponentRank();
 
     _ballCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 550));
@@ -106,13 +111,20 @@ class _DuelGameScreenState extends State<DuelGameScreen>
     _subs.add(_svc.roundStart.listen(_onRoundStart));
     _subs.add(_svc.roundResult.listen(_onRoundResult));
     _subs.add(_svc.duelEnd.listen(_onDuelEnd));
-    _subs.add(
-        _svc.oppDisconnected.listen((_) => setState(() => _oppDisconnected = true)));
-    _subs.add(
-        _svc.oppReconnected.listen((_) => setState(() => _oppDisconnected = false)));
+    _subs.add(_svc.oppDisconnected
+        .listen((_) => setState(() => _oppDisconnected = true)));
+    _subs.add(_svc.oppReconnected
+        .listen((_) => setState(() => _oppDisconnected = false)));
     _subs.add(_svc.choiceLocked.listen((c) => setState(() => _myChoice = c)));
 
     _startCountdown();
+  }
+
+  Future<void> _loadOpponentRank() async {
+    try {
+      final me = await ApiService.getMe(name: _oppName, sala: _oppSala);
+      if (mounted) setState(() => _oppMe = me);
+    } catch (_) {}
   }
 
   @override
@@ -244,6 +256,7 @@ class _DuelGameScreenState extends State<DuelGameScreen>
         _PlayerChip(
             name: _oppName,
             sala: _roomNames[_oppSala] ?? _oppSala,
+            rank: _oppMe?.rank,
             isKicker: !_amKicker,
             consec: _oppConsec,
             isMe: false),
@@ -280,10 +293,9 @@ class _DuelGameScreenState extends State<DuelGameScreen>
               _phase == _Phase.revealing && _keeperCtrl.value > 0.05;
 
           // Ball position during reveal
-          final ballCx = w / 2 +
-              _ballCtrl.value * _ballTargetX * (w * 0.34);
-          final ballCy = ballHomeY -
-              _ballCtrl.value * (ballHomeY - ballLandingY);
+          final ballCx = w / 2 + _ballCtrl.value * _ballTargetX * (w * 0.34);
+          final ballCy =
+              ballHomeY - _ballCtrl.value * (ballHomeY - ballLandingY);
 
           // Ball spin during flight
           final ballRotation = _ballCtrl.value * 6.28 * _ballTargetX;
@@ -296,8 +308,8 @@ class _DuelGameScreenState extends State<DuelGameScreen>
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.55),
                     borderRadius: BorderRadius.circular(20),
@@ -455,14 +467,12 @@ class _DuelGameScreenState extends State<DuelGameScreen>
                   letterSpacing: 1.2)),
           const SizedBox(height: 2),
           Text('Toque em um lado',
-              style:
-                  GoogleFonts.poppins(color: Colors.white54, fontSize: 11)),
+              style: GoogleFonts.poppins(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 4),
           Text('$_timer',
               style: GoogleFonts.poppins(
-                  color: _timer <= 2
-                      ? Colors.redAccent
-                      : const Color(0xFFFFDF00),
+                  color:
+                      _timer <= 2 ? Colors.redAccent : const Color(0xFFFFDF00),
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   height: 1)),
@@ -475,8 +485,7 @@ class _DuelGameScreenState extends State<DuelGameScreen>
         color: Colors.black26,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('Aguardando oponente...',
-              style:
-                  GoogleFonts.poppins(color: Colors.white54, fontSize: 13)),
+              style: GoogleFonts.poppins(color: Colors.white54, fontSize: 13)),
           const SizedBox(height: 4),
           const SizedBox(
               width: 18,
@@ -494,8 +503,7 @@ class _DuelGameScreenState extends State<DuelGameScreen>
         child: Text(iWon ? 'Voce ganhou este round!' : 'Voce perdeu o round',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-                color:
-                    iWon ? const Color(0xFF00D45B) : Colors.redAccent,
+                color: iWon ? const Color(0xFF00D45B) : Colors.redAccent,
                 fontSize: 14,
                 fontWeight: FontWeight.w700)),
       );
@@ -515,79 +523,75 @@ class _DuelGameScreenState extends State<DuelGameScreen>
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(iWon ? '🏆' : '💀',
-                      style: const TextStyle(fontSize: 72)),
-                  const SizedBox(height: 8),
-                  Text(iWon ? 'VENCEDOR' : 'DERROTA',
-                      style: TextStyle(
-                          fontSize: 36,
-                          color: iWon
-                              ? const Color(0xFFFFDF00)
-                              : Colors.redAccent,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2)),
-                  const SizedBox(height: 4),
-                  Text(iWon ? 'Voce venceu o duelo!' : 'Voce perdeu o duelo',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white60,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500)),
-                  if (reason == 'disconnect') ...[
-                    const SizedBox(height: 4),
-                    Text('(Oponente desconectou)',
-                        style: GoogleFonts.poppins(
-                            color: Colors.white38, fontSize: 11)),
-                  ],
-                  if (pts > 0) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(iWon ? '🏆' : '💀', style: const TextStyle(fontSize: 72)),
+              const SizedBox(height: 8),
+              Text(iWon ? 'VENCEDOR' : 'DERROTA',
+                  style: TextStyle(
+                      fontSize: 36,
+                      color: iWon ? const Color(0xFFFFDF00) : Colors.redAccent,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2)),
+              const SizedBox(height: 4),
+              Text(iWon ? 'Voce venceu o duelo!' : 'Voce perdeu o duelo',
+                  style: GoogleFonts.poppins(
+                      color: Colors.white60,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500)),
+              if (reason == 'disconnect') ...[
+                const SizedBox(height: 4),
+                Text('(Oponente desconectou)',
+                    style: GoogleFonts.poppins(
+                        color: Colors.white38, fontSize: 11)),
+              ],
+              if (pts > 0) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: iWon
+                        ? const Color(0xFF009C3B).withOpacity(0.2)
+                        : Colors.red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
                         color: iWon
-                            ? const Color(0xFF009C3B).withOpacity(0.2)
-                            : Colors.red.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: iWon
-                                ? const Color(0xFF009C3B).withOpacity(0.5)
-                                : Colors.red.withOpacity(0.4)),
-                      ),
-                      child: Text(
-                          iWon
-                              ? '+$pts gols para ${widget.salaName}!'
-                              : '-$pts gols para ${widget.salaName}!',
-                          style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 10),
-                    Text('Duelo amistoso — sem pontos',
-                        style: GoogleFonts.poppins(
-                            color: Colors.white38, fontSize: 12)),
-                  ],
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF002776),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12))),
-                      child: Text('Voltar',
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
-                    ),
+                            ? const Color(0xFF009C3B).withOpacity(0.5)
+                            : Colors.red.withOpacity(0.4)),
                   ),
-                ]),
+                  child: Text(
+                      iWon
+                          ? '+$pts gols para ${widget.salaName}!'
+                          : '-$pts gols para ${widget.salaName}!',
+                      style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ] else ...[
+                const SizedBox(height: 10),
+                Text('Duelo amistoso — sem pontos',
+                    style: GoogleFonts.poppins(
+                        color: Colors.white38, fontSize: 12)),
+              ],
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF002776),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text('Voltar',
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+              ),
+            ]),
           ),
         ),
       ),
@@ -599,17 +603,20 @@ class _DuelGameScreenState extends State<DuelGameScreen>
 
 class _PlayerChip extends StatelessWidget {
   final String name, sala;
+  final Rank? rank;
   final bool isKicker, isMe;
   final int consec;
   const _PlayerChip(
       {required this.name,
       required this.sala,
+      this.rank,
       required this.isKicker,
       required this.consec,
       required this.isMe});
 
   @override
   Widget build(BuildContext context) {
+    final shownRank = rank;
     final roleIcon = isKicker ? '⚽' : '🧤';
     final roleColor =
         isKicker ? const Color(0xFFFFDF00) : const Color(0xFF00D45B);
@@ -634,6 +641,10 @@ class _PlayerChip extends StatelessWidget {
               Text(roleIcon, style: const TextStyle(fontSize: 14)),
             ],
           ]),
+          if (shownRank != null) ...[
+            const SizedBox(height: 3),
+            RankBadge(rank: shownRank, compact: true),
+          ],
           Text(sala,
               style: const TextStyle(color: Colors.white38, fontSize: 10)),
           const SizedBox(height: 2),
@@ -652,9 +663,7 @@ class _PlayerChip extends StatelessWidget {
                 height: 9,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: i < consec
-                      ? const Color(0xFFFFDF00)
-                      : Colors.white12,
+                  color: i < consec ? const Color(0xFFFFDF00) : Colors.white12,
                   border: Border.all(color: Colors.white24, width: 0.5),
                 ),
               ),
@@ -678,7 +687,8 @@ class _Ball extends StatelessWidget {
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
         ],
         gradient: RadialGradient(
           center: Alignment(-0.35, -0.35),
@@ -698,8 +708,13 @@ class _BallPainter extends CustomPainter {
     final p = Paint()..color = Colors.black87;
 
     // outline
-    canvas.drawCircle(c, r - 0.5,
-        Paint()..color = Colors.black12..style = PaintingStyle.stroke..strokeWidth = 1);
+    canvas.drawCircle(
+        c,
+        r - 0.5,
+        Paint()
+          ..color = Colors.black12
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1);
 
     // central pentagon
     _pentagon(canvas, c, r * 0.36, p);
@@ -707,7 +722,8 @@ class _BallPainter extends CustomPainter {
     // 5 surrounding pentagons (smaller)
     for (int i = 0; i < 5; i++) {
       final ang = -pi / 2 + i * 2 * pi / 5;
-      final off = Offset(c.dx + cos(ang) * r * 0.62, c.dy + sin(ang) * r * 0.62);
+      final off =
+          Offset(c.dx + cos(ang) * r * 0.62, c.dy + sin(ang) * r * 0.62);
       _pentagon(canvas, off, r * 0.18, p);
     }
   }
