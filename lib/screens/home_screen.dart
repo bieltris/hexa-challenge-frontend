@@ -4,6 +4,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/comment_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
@@ -289,6 +290,13 @@ class _HomeScreenState extends State<HomeScreen>
                 // ── Minigames ─────────────────────────────────────────────
                 SliverToBoxAdapter(child: _buildGameButtons()),
 
+                // ── Compartilhar (entre Duelo e Comentários) ──────────────
+                SliverToBoxAdapter(
+                  child: _buildShareButton(
+                    margin: const EdgeInsets.fromLTRB(28, 6, 28, 14),
+                  ),
+                ),
+
                 // ── Seção de Comentários ──────────────────────────────────
                 SliverToBoxAdapter(child: _buildCommentsSection()),
 
@@ -452,7 +460,37 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+
+        // Título do jogo
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('⚽', style: TextStyle(fontSize: 26)),
+                const SizedBox(width: 8),
+                ShaderMask(
+                  shaderCallback: (b) => const LinearGradient(
+                    colors: [Color(0xFFFFDF00), Color(0xFF00D45B)],
+                  ).createShader(b),
+                  child: Text(
+                    'Hexa Challenge',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 14),
 
         // Banner recompensa secreta
         _RewardBanner(ctrl: _bannerCtrl),
@@ -475,6 +513,60 @@ class _HomeScreenState extends State<HomeScreen>
 
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  // ── Botão Compartilhar (amarelo) ──────────────────────────────────────────
+  Widget _buildShareButton({EdgeInsets margin = EdgeInsets.zero}) {
+    return Padding(
+      padding: margin,
+      child: GestureDetector(
+        onTap: () => Share.share(
+          'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\nhttps://hexa-challenge.pages.dev',
+          subject: 'Hexa Challenge — entra no jogo!',
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFE94A), Color(0xFFFFC400)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              const BoxShadow(
+                color: Color(0xFFB58900),
+                offset: Offset(0, 5),
+                blurRadius: 0,
+              ),
+              BoxShadow(
+                color: const Color(0xFFFFDF00).withOpacity(0.4),
+                offset: const Offset(0, 8),
+                blurRadius: 12,
+              ),
+            ],
+            border: Border.all(color: const Color(0xFFFFEC8B), width: 1.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.share_rounded, color: Color(0xFF001040), size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Convidar amigos',
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFF001040),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

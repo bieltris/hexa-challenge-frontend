@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/duel_socket_service.dart';
 import 'duel_game_screen.dart';
 
@@ -146,6 +147,48 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> {
                     style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                 Text(_queued ? 'Toque para cancelar' : 'Encontre um oponente de outra sala',
                     style: GoogleFonts.poppins(color: Colors.white54, fontSize: 11)),
+              ]),
+            ),
+          ),
+        ),
+
+        // Share button (acima do divider)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: GestureDetector(
+            onTap: () => Share.share(
+              'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\nhttps://hexa-challenge.pages.dev',
+              subject: 'Hexa Challenge — entra no jogo!',
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFE94A), Color(0xFFFFC400)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFEC8B), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFDF00).withOpacity(0.3),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.share_rounded, color: Color(0xFF001040), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Convidar amigos pro jogo',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF001040),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ]),
             ),
           ),

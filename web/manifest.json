@@ -1,13 +1,15 @@
 {
-    "name": "hexa_challenge",
-    "short_name": "hexa_challenge",
+    "name": "Hexa Challenge",
+    "short_name": "Hexa Challenge",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#001040",
+    "theme_color": "#001040",
+    "description": "Duelo de pênalti entre escolas — Copa do Mundo 2026. Jogue, dispute o placar e veja sua sala chegar ao topo!",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "lang": "pt-BR",
+    "categories": ["games", "sports", "education"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
