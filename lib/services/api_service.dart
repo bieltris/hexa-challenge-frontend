@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/score_model.dart';
 import '../models/question_model.dart';
 import '../models/comment_model.dart';
@@ -250,6 +252,56 @@ class ApiService {
           jsonDecode(res.body) as Map<String, dynamic>);
     }
     throw Exception('Erro ao postar comentário: ${res.statusCode}');
+  }
+
+  static Future<CommentModel> postAudioComment({
+    required String sala,
+    required String name,
+    required List<int> bytes,
+    required int durMs,
+    String mime = 'audio/mp4',
+  }) async {
+    final req = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_base/api/comments/audio'),
+    );
+    req.headers['x-audio-duration-ms'] = '$durMs';
+    req.fields['sala'] = sala;
+    req.fields['name'] = name;
+    // Extensão derivada do mime (apenas para nomear o file no multipart)
+    final ext = mime.contains('webm')
+        ? 'webm'
+        : mime.contains('mpeg')
+            ? 'mp3'
+            : 'm4a';
+    req.files.add(http.MultipartFile.fromBytes(
+      'audio',
+      bytes,
+      filename: 'audio.$ext',
+      contentType: _parseMime(mime),
+    ));
+    final streamed = await req.send().timeout(const Duration(seconds: 20));
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode == 201) {
+      return CommentModel.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    throw Exception('Erro ao enviar áudio: ${res.statusCode} ${res.body}');
+  }
+
+  static MediaType? _parseMime(String mime) {
+    final parts = mime.split('/');
+    if (parts.length != 2) return null;
+    return MediaType(parts[0], parts[1].split(';').first.trim());
+  }
+
+  static Future<void> reportComment(int id) async {
+    final res = await http
+        .post(Uri.parse('$_base/api/comments/$id/report'))
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw Exception('Erro ao denunciar: ${res.statusCode}');
+    }
   }
 
   static Future<Map<String, int>> getCommentStats() async {
