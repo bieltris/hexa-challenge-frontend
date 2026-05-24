@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const HexaChallenge());
@@ -48,7 +50,33 @@ class HexaChallenge extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const OnboardingScreen(),
+      home: const _AppRoot(),
+    );
+  }
+}
+
+class _AppRoot extends StatelessWidget {
+  const _AppRoot();
+
+  Future<bool> _hasLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getString('hexa_name') ?? '').isNotEmpty &&
+        (prefs.getString('hexa_sala') ?? '').isNotEmpty;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _hasLogin(),
+      builder: (ctx, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF001040),
+            body: Center(child: Text('⚽', style: TextStyle(fontSize: 48))),
+          );
+        }
+        return snap.data! ? const HomeScreen() : const OnboardingScreen();
+      },
     );
   }
 }

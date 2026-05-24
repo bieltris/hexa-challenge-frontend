@@ -15,6 +15,7 @@ enum KeeperState { idle, jumpLeft, jumpRight }
 class GoalPainter extends CustomPainter {
   final int? highlightedZone;
   final bool showZones;
+  final bool showKeeper;
   final double pulseValue;       // 0.0–1.0, AnimationController repeat(reverse)
   final double keeperPosition;   // -1.0 (esq.) a 1.0 (dir.)
   final bool keeperJumping;
@@ -22,6 +23,7 @@ class GoalPainter extends CustomPainter {
   const GoalPainter({
     this.highlightedZone,
     this.showZones = true,
+    this.showKeeper = true,
     this.pulseValue = 0.5,
     this.keeperPosition = 0.0,
     this.keeperJumping = false,
@@ -48,7 +50,7 @@ class GoalPainter extends CustomPainter {
       _drawZoneDividers(canvas, gL, gT, gR, gB, gW, gH);
       _drawTargetCircles(canvas, gL, gT, gW, gH);
     }
-    _drawKeeper(canvas, gL, gT, gR, gB, gW, gH);
+    if (showKeeper) _drawKeeper(canvas, gL, gT, gR, gB, gW, gH);
     _drawPostsAndFrame(canvas, gL, gT, gR, gB);
     _drawFieldBelow(canvas, gL, gR, gB, h);
   }
@@ -543,6 +545,7 @@ class GoalPainter extends CustomPainter {
   bool shouldRepaint(GoalPainter old) =>
       old.highlightedZone != highlightedZone ||
       old.showZones != showZones ||
+      old.showKeeper != showKeeper ||
       (old.pulseValue - pulseValue).abs() > 0.004 ||
       (old.keeperPosition - keeperPosition).abs() > 0.004 ||
       old.keeperJumping != keeperJumping;

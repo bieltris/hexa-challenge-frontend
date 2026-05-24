@@ -38,7 +38,7 @@ class _ResultScreenState extends State<ResultScreen>
   void initState() {
     super.initState();
     _shotsLeft = widget.shotsLeft;
-    _confetti = ConfettiController(duration: const Duration(seconds: 3));
+    _confetti = ConfettiController(duration: const Duration(milliseconds: 2100));
     _shakeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _shakeAnim = Tween<double>(begin: 0, end: 1).animate(_shakeCtrl);

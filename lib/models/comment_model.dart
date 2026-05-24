@@ -48,4 +48,8 @@ class CommentModel {
   };
 
   String get salaName => roomNames[sala] ?? sala;
+
+  bool get isGarrincha => playerName == 'Garrincha';
+  bool get isNeymar    => playerName == 'Neymar';
+  bool get isChico     => playerName == 'Chico';
 }

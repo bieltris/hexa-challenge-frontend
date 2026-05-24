@@ -12,11 +12,13 @@ import 'quiz_screen.dart';
 class GameScreen extends StatefulWidget {
   final String sala;
   final String salaName;
+  final String playerName;
 
   const GameScreen({
     super.key,
     required this.sala,
     required this.salaName,
+    this.playerName = '',
   });
 
   @override
@@ -45,7 +47,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
-    _confetti = ConfettiController(duration: const Duration(seconds: 2));
+    _confetti = ConfettiController(duration: const Duration(milliseconds: 1000));
     _shakeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 550));
     _shakeAnim = Tween<double>(begin: 0, end: 1).animate(_shakeCtrl);
@@ -92,7 +94,11 @@ class _GameScreenState extends State<GameScreen>
 
     final scored = Random().nextDouble() > defenseChance(zone);
 
-    ApiService.registerShot(sala: widget.sala, scored: scored).catchError((_) {});
+    ApiService.registerShot(
+      sala: widget.sala,
+      scored: scored,
+      playerName: widget.playerName.isNotEmpty ? widget.playerName : null,
+    ).catchError((_) {});
 
     // Decrementa chutes persistidos
     final prefs = await SharedPreferences.getInstance();

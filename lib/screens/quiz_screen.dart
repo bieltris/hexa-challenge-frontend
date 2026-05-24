@@ -47,10 +47,29 @@ class _QuizScreenState extends State<QuizScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final qs = await ApiService.getQuestions(count: 5);
-      if (mounted) setState(() { _questions = qs; _loading = false; });
+      // Embaralha as opções de cada pergunta para a correta não ser sempre 'A'
+      final shuffled = qs.map(_shuffleOptions).toList();
+      if (mounted) setState(() { _questions = shuffled; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
+  }
+
+  QuestionModel _shuffleOptions(QuestionModel q) {
+    final rng = Random();
+    final opts = [q.optA, q.optB, q.optC];
+    final correctText = q.optionText(q.correct);
+    opts.shuffle(rng);
+    final letters = ['A', 'B', 'C'];
+    final newCorrect = letters[opts.indexOf(correctText)];
+    return QuestionModel(
+      id:      q.id,
+      text:    q.text,
+      optA:    opts[0],
+      optB:    opts[1],
+      optC:    opts[2],
+      correct: newCorrect,
+    );
   }
 
   // ── Resposta ──────────────────────────────────────────────────────────────
