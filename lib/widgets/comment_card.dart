@@ -226,6 +226,7 @@ class _CommentCardState extends State<CommentCard>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Linha 1: badge "O Goat" + nome (com ellipsis)
                     Row(
                       children: [
                         Container(
@@ -250,7 +251,7 @@ class _CommentCardState extends State<CommentCard>
                                   fontWeight: FontWeight.w900)),
                         ),
                         const SizedBox(width: 6),
-                        Flexible(
+                        Expanded(
                           child: ShaderMask(
                             shaderCallback: (b) => const LinearGradient(
                               colors: [
@@ -260,6 +261,7 @@ class _CommentCardState extends State<CommentCard>
                               ],
                             ).createShader(b),
                             child: Text(c.displayName,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                     color: Colors.white,
@@ -267,11 +269,17 @@ class _CommentCardState extends State<CommentCard>
                                     fontWeight: FontWeight.w700)),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        if (c.rank != null) ...[
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Linha 2: chips (rank, sala, tempo) com Wrap pra quebrar se faltar espaço
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (c.rank != null)
                           RankBadge(rank: c.rank!, compact: true),
-                          const SizedBox(width: 6),
-                        ],
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 1),
@@ -285,11 +293,11 @@ class _CommentCardState extends State<CommentCard>
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700)),
                         ),
+                        Text(c.timeAgo,
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 11)),
                       ],
                     ),
-                    Text(c.timeAgo,
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
                   ],
                 ),
               ),
@@ -523,6 +531,7 @@ class _CommentCardState extends State<CommentCard>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Linha 1: badge legend + nome (com ellipsis)
                       Row(children: [
                         if (isLegend) ...[
                           Container(
@@ -539,36 +548,43 @@ class _CommentCardState extends State<CommentCard>
                           ),
                           const SizedBox(width: 6),
                         ],
-                        Flexible(
+                        Expanded(
                           child: Text(c.displayName,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
                                   color: nameColor,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700)),
                         ),
-                        const SizedBox(width: 6),
-                        if (c.rank != null) ...[
-                          RankBadge(rank: c.rank!, compact: true),
-                          const SizedBox(width: 6),
-                        ],
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF009C3B).withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(c.displaySalaName,
-                              style: const TextStyle(
-                                  color: Color(0xFF00FF6A),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700)),
-                        ),
                       ]),
-                      Text(c.timeAgo,
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      // Linha 2: chips (rank, sala, tempo) com Wrap
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (c.rank != null)
+                            RankBadge(rank: c.rank!, compact: true),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF009C3B).withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(c.displaySalaName,
+                                style: const TextStyle(
+                                    color: Color(0xFF00FF6A),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          Text(c.timeAgo,
+                              style: const TextStyle(
+                                  color: Colors.white38, fontSize: 11)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
