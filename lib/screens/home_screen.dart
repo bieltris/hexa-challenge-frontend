@@ -4,7 +4,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:share_plus/share_plus.dart';
+import '../widgets/share_sheet.dart';
 import '../models/comment_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
@@ -514,35 +514,12 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Future<void> _doShare() async {
-    const url = 'https://hexa-challenge.pages.dev';
-    const text =
-        'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\n$url';
-    try {
-      await Share.share(text, subject: 'Hexa Challenge — entra no jogo!');
-    } catch (_) {
-      await Clipboard.setData(const ClipboardData(text: text));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF009C3B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(12),
-        content: Text(
-          'Link copiado! Cola pros amigos 🚀',
-          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-        duration: const Duration(seconds: 3),
-      ));
-    }
-  }
-
   // ── Botão Compartilhar (amarelo) ──────────────────────────────────────────
   Widget _buildShareButton({EdgeInsets margin = EdgeInsets.zero}) {
     return Padding(
       padding: margin,
       child: GestureDetector(
-        onTap: _doShare,
+        onTap: () => openShare(context),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
