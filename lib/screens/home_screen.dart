@@ -9,6 +9,7 @@ import '../models/comment_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
 import '../widgets/comment_card.dart';
+import '../widgets/world_map_widget.dart';
 import 'scoreboard_screen.dart';
 import 'game_screen.dart';
 import 'arrow_game_screen.dart';
@@ -289,6 +290,9 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // ── Minigames ─────────────────────────────────────────────
                 SliverToBoxAdapter(child: _buildGameButtons()),
+
+                // ── Mapa territorial ──────────────────────────────────────
+                const SliverToBoxAdapter(child: WorldMapWidget()),
 
                 // ── Compartilhar (entre Duelo e Comentários) ──────────────
                 SliverToBoxAdapter(

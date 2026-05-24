@@ -5,6 +5,110 @@ import '../models/question_model.dart';
 import '../models/comment_model.dart';
 import '../models/player_score_model.dart';
 
+class MapRegionModel {
+  final String id;
+  final String? sala;
+  final String salaName;
+  final int percent;
+  final int goals;
+
+  const MapRegionModel({
+    required this.id,
+    required this.sala,
+    required this.salaName,
+    required this.percent,
+    required this.goals,
+  });
+
+  factory MapRegionModel.fromJson(String id, Map<String, dynamic> json) {
+    return MapRegionModel(
+      id: id,
+      sala: json['sala'] as String?,
+      salaName: json['salaName'] as String? ?? 'Ninguém conquistou ainda',
+      percent: (json['percent'] as num?)?.round() ?? 0,
+      goals: (json['goals'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class MapRegionsSnapshot {
+  final Map<String, MapRegionModel> regions;
+  final int totalGoals;
+  final bool isMock;
+
+  const MapRegionsSnapshot({
+    required this.regions,
+    required this.totalGoals,
+    this.isMock = false,
+  });
+
+  factory MapRegionsSnapshot.fromJson(Map<String, dynamic> json) {
+    final rawRegions = json['regions'] as Map<String, dynamic>? ?? {};
+    return MapRegionsSnapshot(
+      totalGoals: (json['totalGoals'] as num?)?.toInt() ?? 0,
+      regions: rawRegions.map(
+        (id, value) => MapEntry(
+          id,
+          MapRegionModel.fromJson(id, value as Map<String, dynamic>),
+        ),
+      ),
+    );
+  }
+
+  factory MapRegionsSnapshot.mock() {
+    const data = {
+      'south_america': MapRegionModel(
+        id: 'south_america',
+        sala: '8ano',
+        salaName: '8º Ano',
+        percent: 31,
+        goals: 124,
+      ),
+      'europe': MapRegionModel(
+        id: 'europe',
+        sala: '6ano',
+        salaName: '6º Ano',
+        percent: 24,
+        goals: 97,
+      ),
+      'asia': MapRegionModel(
+        id: 'asia',
+        sala: '1medio',
+        salaName: '1º Médio',
+        percent: 18,
+        goals: 72,
+      ),
+      'north_america': MapRegionModel(
+        id: 'north_america',
+        sala: '7ano',
+        salaName: '7º Ano',
+        percent: 13,
+        goals: 51,
+      ),
+      'africa': MapRegionModel(
+        id: 'africa',
+        sala: '9ano',
+        salaName: '9º Ano',
+        percent: 9,
+        goals: 36,
+      ),
+      'oceania': MapRegionModel(
+        id: 'oceania',
+        sala: '3medio',
+        salaName: '3º Médio',
+        percent: 5,
+        goals: 20,
+      ),
+    };
+
+    return const MapRegionsSnapshot(
+      regions: data,
+      totalGoals: 400,
+      isMock: true,
+    );
+  }
+}
+
 class ApiService {
   static const String _base = String.fromEnvironment(
     'API_URL',
@@ -55,6 +159,22 @@ class ApiService {
           .toList();
     }
     throw Exception('Erro ao carregar jogadores: ${res.statusCode}');
+  }
+
+  // ── Territorial map ──────────────────────────────────────────────────────
+  static Future<MapRegionsSnapshot> getMapRegions() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$_base/api/map/regions'))
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        return MapRegionsSnapshot.fromJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+        );
+      }
+    } catch (_) {}
+
+    return MapRegionsSnapshot.mock();
   }
 
   // ── Quiz ──────────────────────────────────────────────────────────────────
