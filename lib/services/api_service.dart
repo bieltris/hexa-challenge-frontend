@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/score_model.dart';
 import '../models/question_model.dart';
 import '../models/comment_model.dart';
+import '../models/mission_model.dart';
 import '../models/player_score_model.dart';
 import '../models/rank.dart';
 
@@ -216,6 +217,35 @@ class ApiService {
     } catch (_) {}
 
     return MapRegionsSnapshot.mock();
+  }
+
+  // ── Missions ─────────────────────────────────────────────────────────────
+  static Future<List<MissionModel>> getTodayMissions() async {
+    final res = await http
+        .get(Uri.parse('$_base/api/missions/today'))
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as List)
+          .map((j) => MissionModel.fromJson(j as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Erro ao carregar missões: ${res.statusCode}');
+  }
+
+  static Future<List<MissionModel>> getMissionHistory({
+    required String sala,
+    int limit = 30,
+  }) async {
+    final uri = Uri.parse('$_base/api/missions/history').replace(
+      queryParameters: {'sala': sala, 'limit': '$limit'},
+    );
+    final res = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as List)
+          .map((j) => MissionModel.fromJson(j as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Erro ao carregar histórico: ${res.statusCode}');
   }
 
   // ── Quiz ──────────────────────────────────────────────────────────────────

@@ -3,12 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:confetti/confetti.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/share_sheet.dart';
 import '../models/comment_model.dart';
+import '../models/mission_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
 import '../widgets/comment_card.dart';
+import '../widgets/mission_card.dart';
 import '../widgets/rank_badge.dart';
 import '../widgets/world_map_widget.dart';
 import 'scoreboard_screen.dart';
@@ -16,6 +20,7 @@ import 'game_screen.dart';
 import 'arrow_game_screen.dart';
 import 'duel_lobby_screen.dart';
 import 'duel_game_screen.dart';
+import 'missions_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
   String _loginName = '';
   String _loginSala = '';
   PlayerMe? _me;
+  MissionModel? _mission;
 
   Future<void> _loadLogin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -51,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (_loginName.isNotEmpty && _loginSala.isNotEmpty) {
       DuelSocketService.instance.connect(_loginName, _loginSala);
       _loadMe();
+      _loadMission();
     }
   }
 
@@ -59,6 +66,21 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final me = await ApiService.getMe(name: _loginName, sala: _loginSala);
       if (mounted) setState(() => _me = me);
+    } catch (_) {}
+  }
+
+  Future<void> _loadMission() async {
+    if (_loginSala.isEmpty) return;
+    try {
+      final missions = await ApiService.getTodayMissions();
+      MissionModel? mission;
+      for (final item in missions) {
+        if (item.sala == _loginSala) {
+          mission = item;
+          break;
+        }
+      }
+      if (mounted) setState(() => _mission = mission);
     } catch (_) {}
   }
 
@@ -89,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // banner gradient
   late AnimationController _bannerCtrl;
+  late ConfettiController _missionConfetti;
 
   Future<void> _loadStats() async {
     try {
@@ -161,6 +184,8 @@ class _HomeScreenState extends State<HomeScreen>
     _bannerCtrl =
         AnimationController(vsync: this, duration: const Duration(seconds: 4))
           ..repeat();
+    _missionConfetti =
+        ConfettiController(duration: const Duration(milliseconds: 1800));
     _loadLogin();
     _loadShots();
     _loadComments();
@@ -262,6 +287,25 @@ class _HomeScreenState extends State<HomeScreen>
         _insertComment(c);
       } catch (_) {}
     });
+    _socket!.on('mission_update', (data) {
+      try {
+        final mission =
+            MissionModel.fromJson(Map<String, dynamic>.from(data as Map));
+        if (mission.sala == _loginSala && mounted) {
+          setState(() => _mission = mission);
+        }
+      } catch (_) {}
+    });
+    _socket!.on('mission_complete', (data) {
+      try {
+        final mission =
+            MissionModel.fromJson(Map<String, dynamic>.from(data as Map));
+        if (mission.sala == _loginSala && mounted) {
+          setState(() => _mission = mission);
+          _showMissionCelebration(mission);
+        }
+      } catch (_) {}
+    });
   }
 
   void _insertComment(CommentModel c) {
@@ -278,12 +322,14 @@ class _HomeScreenState extends State<HomeScreen>
     super.didChangeDependencies();
     _loadShots();
     _loadMe();
+    _loadMission();
   }
 
   @override
   void dispose() {
     _commentCtrl.dispose();
     _bannerCtrl.dispose();
+    _missionConfetti.dispose();
     _socket?.disconnect();
     _socket?.dispose();
     super.dispose();
@@ -314,6 +360,14 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // ── Minigames ─────────────────────────────────────────────
                 SliverToBoxAdapter(child: _buildGameButtons()),
+
+                if (_mission != null)
+                  SliverToBoxAdapter(
+                    child: MissionCard(
+                      mission: _mission!,
+                      onHistoryTap: _openMissionsHistory,
+                    ),
+                  ),
 
                 // ── Mapa territorial ──────────────────────────────────────
                 const SliverToBoxAdapter(child: WorldMapWidget()),
@@ -367,6 +421,77 @@ class _HomeScreenState extends State<HomeScreen>
                 .animate()
                 .fadeIn(delay: 800.ms)
                 .scale(begin: const Offset(0.7, 0.7)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openMissionsHistory() {
+    if (_loginSala.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MissionsHistoryScreen(
+          sala: _loginSala,
+          salaName: _roomNames[_loginSala] ?? _loginSala,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMissionCelebration(MissionModel mission) async {
+    _missionConfetti.play();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          AlertDialog(
+            backgroundColor: const Color(0xFFFFDF00),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Missão conquistada!',
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF001040),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            content: Text(
+              '${mission.salaName} bateu ${mission.target} gols. Recompensa: ${mission.reward}.',
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF00331A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Fechar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Share.share(
+                    'Nossa sala bateu a missão de hoje no Hexa Challenge: ${mission.target} gols! Recompensa: ${mission.reward}.',
+                  );
+                },
+                icon: const Icon(Icons.share_rounded),
+                label: const Text('Conta pra galera'),
+              ),
+            ],
+          ),
+          ConfettiWidget(
+            confettiController: _missionConfetti,
+            blastDirectionality: BlastDirectionality.explosive,
+            numberOfParticles: 24,
+            gravity: 0.22,
+            colors: const [
+              Color(0xFF009C3B),
+              Color(0xFFFFDF00),
+              Color(0xFF002776),
+              Colors.white,
+            ],
           ),
         ],
       ),
