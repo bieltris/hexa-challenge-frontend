@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/duel_socket_service.dart';
@@ -107,6 +108,26 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> {
     if (_queued) { _svc.leaveQueue(); } else { _svc.joinQueue(); }
   }
 
+  Future<void> _doShare() async {
+    const url = 'https://hexa-challenge.pages.dev';
+    const text = 'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\n$url';
+    try {
+      await Share.share(text, subject: 'Hexa Challenge — entra no jogo!');
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF009C3B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(12),
+        content: Text('Link copiado! Cola pros amigos 🚀',
+            style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
+        duration: const Duration(seconds: 3),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final idle = _online.where((u) =>
@@ -156,10 +177,7 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: GestureDetector(
-            onTap: () => Share.share(
-              'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\nhttps://hexa-challenge.pages.dev',
-              subject: 'Hexa Challenge — entra no jogo!',
-            ),
+            onTap: _doShare,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),

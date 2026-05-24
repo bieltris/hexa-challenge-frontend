@@ -293,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen>
                 // ── Compartilhar (entre Duelo e Comentários) ──────────────
                 SliverToBoxAdapter(
                   child: _buildShareButton(
-                    margin: const EdgeInsets.fromLTRB(28, 6, 28, 14),
+                    margin: const EdgeInsets.fromLTRB(16, 6, 16, 14),
                   ),
                 ),
 
@@ -471,18 +471,16 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 const Text('⚽', style: TextStyle(fontSize: 26)),
                 const SizedBox(width: 8),
-                ShaderMask(
-                  shaderCallback: (b) => const LinearGradient(
-                    colors: [Color(0xFFFFDF00), Color(0xFF00D45B)],
-                  ).createShader(b),
-                  child: Text(
-                    'Hexa Challenge',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
+                Text(
+                  'Hexa Challenge',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFFFFDF00),
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                    shadows: const [
+                      Shadow(color: Color(0xFF001040), blurRadius: 4, offset: Offset(0, 2)),
+                    ],
                   ),
                 ),
               ],
@@ -516,15 +514,35 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Future<void> _doShare() async {
+    const url = 'https://hexa-challenge.pages.dev';
+    const text =
+        'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\n$url';
+    try {
+      await Share.share(text, subject: 'Hexa Challenge — entra no jogo!');
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: text));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF009C3B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(12),
+        content: Text(
+          'Link copiado! Cola pros amigos 🚀',
+          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        duration: const Duration(seconds: 3),
+      ));
+    }
+  }
+
   // ── Botão Compartilhar (amarelo) ──────────────────────────────────────────
   Widget _buildShareButton({EdgeInsets margin = EdgeInsets.zero}) {
     return Padding(
       padding: margin,
       child: GestureDetector(
-        onTap: () => Share.share(
-          'Joga Hexa Challenge comigo! ⚽\nDuelo de pênalti entre escolas — Copa 2026\nhttps://hexa-challenge.pages.dev',
-          subject: 'Hexa Challenge — entra no jogo!',
-        ),
+        onTap: _doShare,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
