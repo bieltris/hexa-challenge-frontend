@@ -9,6 +9,7 @@ import '../models/comment_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
 import '../widgets/comment_card.dart';
+import '../widgets/rank_badge.dart';
 import '../widgets/world_map_widget.dart';
 import 'scoreboard_screen.dart';
 import 'game_screen.dart';
@@ -26,24 +27,39 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   static const _roomNames = {
-    '6ano': '6º Ano', '7ano': '7º Ano', '8ano': '8º Ano',
-    '9ano': '9º Ano', '1medio': '1º Médio', '2medio': '2º Médio',
+    '6ano': '6º Ano',
+    '7ano': '7º Ano',
+    '8ano': '8º Ano',
+    '9ano': '9º Ano',
+    '1medio': '1º Médio',
+    '2medio': '2º Médio',
     '3medio': '3º Médio',
   };
 
   // ── Login ─────────────────────────────────────────────────────────────────
   String _loginName = '';
   String _loginSala = '';
+  PlayerMe? _me;
 
   Future<void> _loadLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() {
-      _loginName = prefs.getString('hexa_name') ?? '';
-      _loginSala = prefs.getString('hexa_sala') ?? '';
-    });
+    if (mounted)
+      setState(() {
+        _loginName = prefs.getString('hexa_name') ?? '';
+        _loginSala = prefs.getString('hexa_sala') ?? '';
+      });
     if (_loginName.isNotEmpty && _loginSala.isNotEmpty) {
       DuelSocketService.instance.connect(_loginName, _loginSala);
+      _loadMe();
     }
+  }
+
+  Future<void> _loadMe() async {
+    if (_loginName.isEmpty || _loginSala.isEmpty) return;
+    try {
+      final me = await ApiService.getMe(name: _loginName, sala: _loginSala);
+      if (mounted) setState(() => _me = me);
+    } catch (_) {}
   }
 
   // ── Chutes ────────────────────────────────────────────────────────────────
@@ -126,7 +142,11 @@ class _HomeScreenState extends State<HomeScreen>
     if (text.length < 2 || _posting || _loginSala.isEmpty) return;
     setState(() => _posting = true);
     try {
-      await ApiService.postComment(sala: _loginSala, body: text);
+      await ApiService.postComment(
+        sala: _loginSala,
+        body: text,
+        name: _loginName,
+      );
       _commentCtrl.clear();
       if (mounted) setState(() => _posting = false);
     } catch (_) {
@@ -138,9 +158,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _bannerCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 4))
-      ..repeat();
+    _bannerCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 4))
+          ..repeat();
     _loadLogin();
     _loadShots();
     _loadComments();
@@ -158,7 +178,8 @@ class _HomeScreenState extends State<HomeScreen>
         backgroundColor: const Color(0xFF4B0082),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: const Color(0xFFBB44FF).withOpacity(0.5), width: 1.2),
+          side: BorderSide(
+              color: const Color(0xFFBB44FF).withOpacity(0.5), width: 1.2),
         ),
         margin: const EdgeInsets.all(12),
         elevation: 8,
@@ -195,12 +216,14 @@ class _HomeScreenState extends State<HomeScreen>
               backgroundColor: const Color(0xFFFFDF00),
               foregroundColor: const Color(0xFF001040),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               elevation: 3,
             ),
             child: Text(
               'Ver',
-              style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w800),
+              style: GoogleFonts.poppins(
+                  fontSize: 13, fontWeight: FontWeight.w800),
             ),
           ),
         ]),
@@ -254,6 +277,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadShots();
+    _loadMe();
   }
 
   @override
@@ -483,7 +507,10 @@ class _HomeScreenState extends State<HomeScreen>
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.5,
                     shadows: const [
-                      Shadow(color: Color(0xFF001040), blurRadius: 4, offset: Offset(0, 2)),
+                      Shadow(
+                          color: Color(0xFF001040),
+                          blurRadius: 4,
+                          offset: Offset(0, 2)),
                     ],
                   ),
                 ),
@@ -511,6 +538,25 @@ class _HomeScreenState extends State<HomeScreen>
                 fontWeight: FontWeight.w600,
               ),
             ).animate().fadeIn(delay: 200.ms),
+          ),
+
+        if (_me != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+            child: Row(
+              children: [
+                RankBadge(rank: _me!.rank),
+                const SizedBox(width: 8),
+                Text(
+                  '${_me!.goals} gols',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ).animate().fadeIn(delay: 260.ms),
           ),
 
         const SizedBox(height: 12),
@@ -551,7 +597,8 @@ class _HomeScreenState extends State<HomeScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.share_rounded, color: Color(0xFF001040), size: 20),
+              const Icon(Icons.share_rounded,
+                  color: Color(0xFF001040), size: 20),
               const SizedBox(width: 10),
               Text(
                 'Convidar amigos',
@@ -599,7 +646,10 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ),
                           );
-                          if (mounted) _loadShots();
+                          if (mounted) {
+                            _loadShots();
+                            _loadMe();
+                          }
                         },
                 ),
               ),
@@ -624,6 +674,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             ),
                           );
+                          if (mounted) _loadMe();
                         },
                 ),
               ),
@@ -968,7 +1019,7 @@ class _RewardBanner extends StatelessWidget {
                 ),
                 // "secreta" com gradiente cromático diagonal rolante
                 RepaintBoundary(
-                 child: AnimatedBuilder(
+                    child: AnimatedBuilder(
                   animation: ctrl,
                   builder: (_, __) => ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
@@ -997,7 +1048,7 @@ class _RewardBanner extends StatelessWidget {
                       ),
                     ),
                   ),
-                 )),
+                )),
               ],
             ),
             const SizedBox(height: 4),
@@ -1058,8 +1109,10 @@ class _GameBlockState extends State<_GameBlock> {
   @override
   Widget build(BuildContext context) {
     final disabled = widget.onTap == null;
-    final effectiveColor = disabled ? widget.color.withOpacity(0.5) : widget.color;
-    final effectiveShadow = disabled ? widget.shadowColor.withOpacity(0.5) : widget.shadowColor;
+    final effectiveColor =
+        disabled ? widget.color.withOpacity(0.5) : widget.color;
+    final effectiveShadow =
+        disabled ? widget.shadowColor.withOpacity(0.5) : widget.shadowColor;
 
     return GestureDetector(
       onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
@@ -1121,16 +1174,19 @@ class _GameBlockState extends State<_GameBlock> {
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(widget.maxShots, (i) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(
-                        Icons.sports_soccer,
-                        size: 15,
-                        color: widget.shotsLeft! > i
-                            ? const Color(0xFFFFDF00)
-                            : Colors.white24,
-                      ),
-                    )),
+                    children: List.generate(
+                        widget.maxShots,
+                        (i) => Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: Icon(
+                                Icons.sports_soccer,
+                                size: 15,
+                                color: widget.shotsLeft! > i
+                                    ? const Color(0xFFFFDF00)
+                                    : Colors.white24,
+                              ),
+                            )),
                   ),
                 ],
               ],

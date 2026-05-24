@@ -1,8 +1,8 @@
-import 'dart:math';
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/comment_model.dart';
+import 'rank_badge.dart';
 
 // ── Feitos lendários do Chico ─────────────────────────────────────────────────
 const _chicoFeitos = [
@@ -39,7 +39,7 @@ class CommentCard extends StatefulWidget {
 class _CommentCardState extends State<CommentCard>
     with TickerProviderStateMixin {
   late bool _liked;
-  late int  _likes;
+  late int _likes;
   bool _chicoExpanded = false;
 
   late AnimationController _gradientCtrl;
@@ -84,12 +84,12 @@ class _CommentCardState extends State<CommentCard>
 
   @override
   Widget build(BuildContext context) {
-    final c           = widget.comment;
-    final isPele      = c.isPele;
+    final c = widget.comment;
+    final isPele = c.isPele;
     final isGarrincha = c.isGarrincha;
-    final isNeymar    = c.isNeymar;
-    final isChico     = c.isChico;
-    final isLegend    = isPele || isGarrincha || isNeymar || isChico;
+    final isNeymar = c.isNeymar;
+    final isChico = c.isChico;
+    final isLegend = isPele || isGarrincha || isNeymar || isChico;
 
     if (isChico) return _buildChicoCard(c);
     return _buildStandardCard(c, isPele, isGarrincha, isNeymar, isLegend);
@@ -107,9 +107,18 @@ class _CommentCardState extends State<CommentCard>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
-              BoxShadow(color: const Color(0xFF002776).withOpacity(aura),         blurRadius: 32, spreadRadius: 10),
-              BoxShadow(color: const Color(0xFF009C3B).withOpacity(aura),         blurRadius: 48, spreadRadius: 14),
-              BoxShadow(color: const Color(0xFFFFDF00).withOpacity(aura * 0.85),  blurRadius: 64, spreadRadius: 18),
+              BoxShadow(
+                  color: const Color(0xFF002776).withOpacity(aura),
+                  blurRadius: 32,
+                  spreadRadius: 10),
+              BoxShadow(
+                  color: const Color(0xFF009C3B).withOpacity(aura),
+                  blurRadius: 48,
+                  spreadRadius: 14),
+              BoxShadow(
+                  color: const Color(0xFFFFDF00).withOpacity(aura * 0.85),
+                  blurRadius: 64,
+                  spreadRadius: 18),
             ],
           ),
           child: ClipRRect(
@@ -122,7 +131,7 @@ class _CommentCardState extends State<CommentCard>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: const Alignment(-2, -2),
-                        end:   const Alignment(0, 0),
+                        end: const Alignment(0, 0),
                         colors: const [
                           Color(0xFF001A4E),
                           Color(0xFF002776),
@@ -161,11 +170,16 @@ class _CommentCardState extends State<CommentCard>
           // Badge topo
           Row(
             children: [
-              const Icon(Icons.emoji_events, color: Color(0xFFFFDF00), size: 14),
+              const Icon(Icons.emoji_events,
+                  color: Color(0xFFFFDF00), size: 14),
               const SizedBox(width: 4),
               ShaderMask(
                 shaderCallback: (b) => const LinearGradient(
-                  colors: [Color(0xFF4FC3F7), Color(0xFF009C3B), Color(0xFFFFDF00)],
+                  colors: [
+                    Color(0xFF4FC3F7),
+                    Color(0xFF009C3B),
+                    Color(0xFFFFDF00)
+                  ],
                 ).createShader(b),
                 child: Text(
                   'Comentário do Criador dos Esportes',
@@ -215,39 +229,67 @@ class _CommentCardState extends State<CommentCard>
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF002776), Color(0xFF009C3B), Color(0xFFFFDF00)],
+                              colors: [
+                                Color(0xFF002776),
+                                Color(0xFF009C3B),
+                                Color(0xFFFFDF00)
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: const Text('O Goat',
-                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900)),
                         ),
                         const SizedBox(width: 6),
-                        ShaderMask(
-                          shaderCallback: (b) => const LinearGradient(
-                            colors: [Color(0xFF4FC3F7), Color(0xFF009C3B), Color(0xFFFFDF00)],
-                          ).createShader(b),
-                          child: Text(c.playerName,
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Flexible(
+                          child: ShaderMask(
+                            shaderCallback: (b) => const LinearGradient(
+                              colors: [
+                                Color(0xFF4FC3F7),
+                                Color(0xFF009C3B),
+                                Color(0xFFFFDF00)
+                              ],
+                            ).createShader(b),
+                            child: Text(c.displayName,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700)),
+                          ),
                         ),
                         const SizedBox(width: 6),
+                        if (c.rank != null) ...[
+                          RankBadge(rank: c.rank!, compact: true),
+                          const SizedBox(width: 6),
+                        ],
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
                             color: const Color(0xFF009C3B).withOpacity(0.3),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(c.salaName,
-                              style: const TextStyle(color: Color(0xFF00FF6A), fontSize: 9, fontWeight: FontWeight.w700)),
+                          child: Text(c.displaySalaName,
+                              style: const TextStyle(
+                                  color: Color(0xFF00FF6A),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
-                    Text(c.timeAgo, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                    Text(c.timeAgo,
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
                   ],
                 ),
               ),
@@ -257,7 +299,8 @@ class _CommentCardState extends State<CommentCard>
           const SizedBox(height: 10),
 
           Text(c.body,
-              style: const TextStyle(color: Colors.white, fontSize: 13.5, height: 1.45)),
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 13.5, height: 1.45)),
 
           // Lista expansível de feitos
           AnimatedSize(
@@ -278,22 +321,23 @@ class _CommentCardState extends State<CommentCard>
                                 fontWeight: FontWeight.w800)),
                         const SizedBox(height: 8),
                         ..._chicoFeitos.map((f) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(f.$1, style: const TextStyle(fontSize: 13)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(f.$2,
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                        height: 1.4)),
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(f.$1,
+                                      style: const TextStyle(fontSize: 13)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(f.$2,
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                            height: 1.4)),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )),
+                            )),
                       ],
                     ),
                   )
@@ -307,14 +351,16 @@ class _CommentCardState extends State<CommentCard>
             children: [
               // Link Spotify
               GestureDetector(
-                onTap: () => html.window.open(
-                  'https://open.spotify.com/intl-pt/track/1uk9L4ffJrPzrjPptBHcAJ',
-                  '_blank',
+                onTap: () => launchUrl(
+                  Uri.parse(
+                      'https://open.spotify.com/intl-pt/track/1uk9L4ffJrPzrjPptBHcAJ'),
+                  mode: LaunchMode.externalApplication,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.music_note, size: 13, color: Color(0xFF1DB954)),
+                    const Icon(Icons.music_note,
+                        size: 13, color: Color(0xFF1DB954)),
                     const SizedBox(width: 4),
                     Text(
                       'Luz da Lua - Yuri Redicopa',
@@ -325,7 +371,8 @@ class _CommentCardState extends State<CommentCard>
                         fontStyle: FontStyle.italic,
                         decoration: TextDecoration.underline,
                         decorationStyle: TextDecorationStyle.dashed,
-                        decorationColor: const Color(0xFFFFDF00).withOpacity(0.7),
+                        decorationColor:
+                            const Color(0xFFFFDF00).withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -338,7 +385,8 @@ class _CommentCardState extends State<CommentCard>
                 child: Row(
                   children: [
                     Icon(_liked ? Icons.favorite : Icons.favorite_border,
-                        size: 16, color: _liked ? Colors.redAccent : Colors.white38),
+                        size: 16,
+                        color: _liked ? Colors.redAccent : Colors.white38),
                     const SizedBox(width: 4),
                     Text('$_likes',
                         style: TextStyle(
@@ -369,41 +417,53 @@ class _CommentCardState extends State<CommentCard>
 
     if (isPele) {
       gradientColors = const [Color(0xFF2A1F00), Color(0xFF3D2E00)];
-      borderColor    = const Color(0xFFFFDF00);
-      glowColor      = const Color(0xFFFFDF00);
-      nameColor      = const Color(0xFFFFDF00);
-      textColor      = const Color(0xFFFFF5D6);
-      badgeBg        = const Color(0xFFFFDF00);
-      badgeText      = const Color(0xFF1A1200);
+      borderColor = const Color(0xFFFFDF00);
+      glowColor = const Color(0xFFFFDF00);
+      nameColor = const Color(0xFFFFDF00);
+      textColor = const Color(0xFFFFF5D6);
+      badgeBg = const Color(0xFFFFDF00);
+      badgeText = const Color(0xFF1A1200);
     } else if (isGarrincha) {
       gradientColors = const [Color(0xFF2A1200), Color(0xFF3D2000)];
-      borderColor    = const Color(0xFFFF8C00);
-      glowColor      = const Color(0xFFFF8C00);
-      nameColor      = const Color(0xFFFFAA33);
-      textColor      = const Color(0xFFFFF0D6);
-      badgeBg        = const Color(0xFFFF8C00);
-      badgeText      = const Color(0xFF1A0800);
+      borderColor = const Color(0xFFFF8C00);
+      glowColor = const Color(0xFFFF8C00);
+      nameColor = const Color(0xFFFFAA33);
+      textColor = const Color(0xFFFFF0D6);
+      badgeBg = const Color(0xFFFF8C00);
+      badgeText = const Color(0xFF1A0800);
     } else if (isNeymar) {
       gradientColors = const [Color(0xFF29270A), Color(0xFF3A3610)];
-      borderColor    = const Color(0xFFFFEE58);
-      glowColor      = const Color(0xFFFFEE58);
-      nameColor      = const Color(0xFFFFEE58);
-      textColor      = const Color(0xFFFFFDE7);
-      badgeBg        = const Color(0xFFFFEE58);
-      badgeText      = const Color(0xFF1A1800);
+      borderColor = const Color(0xFFFFEE58);
+      glowColor = const Color(0xFFFFEE58);
+      nameColor = const Color(0xFFFFEE58);
+      textColor = const Color(0xFFFFFDE7);
+      badgeBg = const Color(0xFFFFEE58);
+      badgeText = const Color(0xFF1A1800);
     } else {
       gradientColors = const [];
-      borderColor    = Colors.white12;
-      glowColor      = Colors.transparent;
-      nameColor      = Colors.white;
-      textColor      = Colors.white;
-      badgeBg        = Colors.transparent;
-      badgeText      = Colors.transparent;
+      borderColor = Colors.white12;
+      glowColor = Colors.transparent;
+      nameColor = Colors.white;
+      textColor = Colors.white;
+      badgeBg = Colors.transparent;
+      badgeText = Colors.transparent;
     }
 
-    final badgeLabel = isPele ? 'Rei' : isNeymar ? 'Príncipe' : 'Anjo das pernas tortas';
-    final topLabel   = isPele ? 'Comentário Lendário' : isNeymar ? 'Comentário do Príncipe' : 'Comentário do Anjo';
-    final topIcon    = isPele ? Icons.star : isNeymar ? Icons.star_border : Icons.auto_awesome;
+    final badgeLabel = isPele
+        ? 'Rei'
+        : isNeymar
+            ? 'Príncipe'
+            : 'Anjo das pernas tortas';
+    final topLabel = isPele
+        ? 'Comentário Lendário'
+        : isNeymar
+            ? 'Comentário do Príncipe'
+            : 'Comentário do Anjo';
+    final topIcon = isPele
+        ? Icons.star
+        : isNeymar
+            ? Icons.star_border
+            : Icons.auto_awesome;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -411,7 +471,10 @@ class _CommentCardState extends State<CommentCard>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: isLegend
-            ? LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight)
+            ? LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)
             : null,
         color: isLegend ? null : Colors.white.withOpacity(0.07),
         border: Border.all(
@@ -419,7 +482,12 @@ class _CommentCardState extends State<CommentCard>
           width: isLegend ? 1.5 : 1,
         ),
         boxShadow: isLegend
-            ? [BoxShadow(color: glowColor.withOpacity(0.14), blurRadius: 16, spreadRadius: 2)]
+            ? [
+                BoxShadow(
+                    color: glowColor.withOpacity(0.14),
+                    blurRadius: 16,
+                    spreadRadius: 2)
+              ]
             : null,
       ),
       child: Padding(
@@ -435,11 +503,12 @@ class _CommentCardState extends State<CommentCard>
                   const SizedBox(width: 4),
                   Text(topLabel,
                       style: GoogleFonts.poppins(
-                          color: borderColor, fontSize: 10,
-                          fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          color: borderColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1)),
                 ]),
               ),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -457,48 +526,62 @@ class _CommentCardState extends State<CommentCard>
                       Row(children: [
                         if (isLegend) ...[
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: badgeBg, borderRadius: BorderRadius.circular(5)),
+                                color: badgeBg,
+                                borderRadius: BorderRadius.circular(5)),
                             child: Text(badgeLabel,
-                                style: TextStyle(color: badgeText, fontSize: 9, fontWeight: FontWeight.w900)),
+                                style: TextStyle(
+                                    color: badgeText,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900)),
                           ),
                           const SizedBox(width: 6),
                         ],
                         Flexible(
-                          child: Text(c.playerName,
+                          child: Text(c.displayName,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
-                                  color: nameColor, fontSize: 13, fontWeight: FontWeight.w700)),
+                                  color: nameColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
                         ),
                         const SizedBox(width: 6),
+                        if (c.rank != null) ...[
+                          RankBadge(rank: c.rank!, compact: true),
+                          const SizedBox(width: 6),
+                        ],
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
                             color: const Color(0xFF009C3B).withOpacity(0.3),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(c.salaName,
-                              style: const TextStyle(color: Color(0xFF00FF6A), fontSize: 9, fontWeight: FontWeight.w700)),
+                          child: Text(c.displaySalaName,
+                              style: const TextStyle(
+                                  color: Color(0xFF00FF6A),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700)),
                         ),
                       ]),
                       Text(c.timeAgo,
-                          style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 11)),
                     ],
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
             Text(c.body,
                 style: TextStyle(
-                    color: isLegend ? textColor : Colors.white.withOpacity(0.85),
-                    fontSize: 13.5, height: 1.45)),
-
+                    color:
+                        isLegend ? textColor : Colors.white.withOpacity(0.85),
+                    fontSize: 13.5,
+                    height: 1.45)),
             const SizedBox(height: 10),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -510,12 +593,15 @@ class _CommentCardState extends State<CommentCard>
                       key: ValueKey(_liked),
                       children: [
                         Icon(_liked ? Icons.favorite : Icons.favorite_border,
-                            size: 16, color: _liked ? Colors.redAccent : Colors.white38),
+                            size: 16,
+                            color: _liked ? Colors.redAccent : Colors.white38),
                         const SizedBox(width: 4),
                         Text('$_likes',
                             style: TextStyle(
-                                color: _liked ? Colors.redAccent : Colors.white38,
-                                fontSize: 12, fontWeight: FontWeight.w600)),
+                                color:
+                                    _liked ? Colors.redAccent : Colors.white38,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -567,13 +653,20 @@ class _PlayerAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials = name.split(' ').take(2).map((w) => w[0]).join();
     Widget img = _isAsset
-        ? Image.asset(photoUrl, width: size, height: size, fit: BoxFit.cover,
+        ? Image.asset(photoUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _fallback(initials))
-        : Image.network(photoUrl, width: size, height: size, fit: BoxFit.cover,
+        : Image.network(photoUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _fallback(initials));
 
     return Container(
-      width: size, height: size,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: borderColor, width: 2),
@@ -583,10 +676,12 @@ class _PlayerAvatar extends StatelessWidget {
   }
 
   Widget _fallback(String initials) => CircleAvatar(
-    radius: size / 2,
-    backgroundColor: borderColor,
-    child: Text(initials,
-        style: TextStyle(color: Colors.black, fontSize: size * 0.31,
-            fontWeight: FontWeight.w800)),
-  );
+        radius: size / 2,
+        backgroundColor: borderColor,
+        child: Text(initials,
+            style: TextStyle(
+                color: Colors.black,
+                fontSize: size * 0.31,
+                fontWeight: FontWeight.w800)),
+      );
 }
