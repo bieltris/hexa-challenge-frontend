@@ -84,56 +84,11 @@ class MapRegionsSnapshot {
     );
   }
 
-  factory MapRegionsSnapshot.mock() {
-    const data = {
-      'south_america': MapRegionModel(
-        id: 'south_america',
-        sala: '8ano',
-        salaName: '8º Ano',
-        percent: 31,
-        goals: 124,
-      ),
-      'europe': MapRegionModel(
-        id: 'europe',
-        sala: '6ano',
-        salaName: '6º Ano',
-        percent: 24,
-        goals: 97,
-      ),
-      'asia': MapRegionModel(
-        id: 'asia',
-        sala: '1medio',
-        salaName: '1º Médio',
-        percent: 18,
-        goals: 72,
-      ),
-      'north_america': MapRegionModel(
-        id: 'north_america',
-        sala: '7ano',
-        salaName: '7º Ano',
-        percent: 13,
-        goals: 51,
-      ),
-      'africa': MapRegionModel(
-        id: 'africa',
-        sala: '9ano',
-        salaName: '9º Ano',
-        percent: 9,
-        goals: 36,
-      ),
-      'oceania': MapRegionModel(
-        id: 'oceania',
-        sala: '3medio',
-        salaName: '3º Médio',
-        percent: 5,
-        goals: 20,
-      ),
-    };
-
+  factory MapRegionsSnapshot.empty() {
     return const MapRegionsSnapshot(
-      regions: data,
-      totalGoals: 400,
-      isMock: true,
+      regions: {},
+      totalGoals: 0,
+      isMock: false,
     );
   }
 }
@@ -216,7 +171,7 @@ class ApiService {
       }
     } catch (_) {}
 
-    return MapRegionsSnapshot.mock();
+    return MapRegionsSnapshot.empty();
   }
 
   // ── Missions ─────────────────────────────────────────────────────────────
