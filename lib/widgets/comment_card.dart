@@ -1,7 +1,9 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/comment_model.dart';
+import '../services/api_service.dart';
 import 'rank_badge.dart';
 
 // ── Feitos lendários do Chico ─────────────────────────────────────────────────
@@ -575,12 +577,21 @@ class _CommentCardState extends State<CommentCard>
               ],
             ),
             const SizedBox(height: 10),
-            Text(c.body,
-                style: TextStyle(
-                    color:
-                        isLegend ? textColor : Colors.white.withOpacity(0.85),
-                    fontSize: 13.5,
-                    height: 1.45)),
+            if (c.hasAudio)
+              _AudioBubble(
+                url: c.audioUrl!,
+                durMs: c.audioDurMs ?? 0,
+                accent: borderColor,
+                onReport: () => _reportComment(c.id),
+              )
+            else
+              Text(c.body,
+                  style: TextStyle(
+                      color: isLegend
+                          ? textColor
+                          : Colors.white.withOpacity(0.85),
+                      fontSize: 13.5,
+                      height: 1.45)),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -613,6 +624,37 @@ class _CommentCardState extends State<CommentCard>
       ),
     );
   }
+
+  Future<void> _reportComment(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Denunciar áudio?'),
+        content: const Text(
+            'O áudio será analisado. Conteúdo ofensivo ou impróprio é removido após 3 denúncias.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Denunciar')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiService.reportComment(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Denúncia registrada')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Erro ao denunciar: $e')));
+    }
+  }
 }
 
 // ── GradientTransform pra rolagem infinita diagonal ──────────────────────────
@@ -628,6 +670,168 @@ class _GradSlide extends GradientTransform {
       bounds.width * 2 * t,
       bounds.height * 2 * t,
       0,
+    );
+  }
+}
+
+// ── Audio bubble com player ─────────────────────────────────────────────────
+
+class _AudioBubble extends StatefulWidget {
+  final String url;
+  final int durMs;
+  final Color accent;
+  final VoidCallback onReport;
+
+  const _AudioBubble({
+    required this.url,
+    required this.durMs,
+    required this.accent,
+    required this.onReport,
+  });
+
+  @override
+  State<_AudioBubble> createState() => _AudioBubbleState();
+}
+
+class _AudioBubbleState extends State<_AudioBubble>
+    with SingleTickerProviderStateMixin {
+  late final AudioPlayer _player;
+  late final AnimationController _wave;
+  bool _playing = false;
+  Duration _pos = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+    _wave = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _player.onPlayerStateChanged.listen((s) {
+      if (!mounted) return;
+      setState(() => _playing = s == PlayerState.playing);
+      if (s == PlayerState.playing) {
+        _wave.repeat(reverse: true);
+      } else {
+        _wave.stop();
+      }
+    });
+    _player.onPositionChanged.listen((p) {
+      if (!mounted) return;
+      setState(() => _pos = p);
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _playing = false;
+        _pos = Duration.zero;
+      });
+      _wave.stop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    _wave.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_playing) {
+      await _player.pause();
+    } else {
+      await _player.play(UrlSource(widget.url));
+    }
+  }
+
+  String _fmt(Duration d) {
+    final s = d.inSeconds;
+    return '0:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMs = widget.durMs > 0 ? widget.durMs : 5000;
+    final progress = (_pos.inMilliseconds / totalMs).clamp(0.0, 1.0);
+    return GestureDetector(
+      onLongPress: widget.onReport,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: widget.accent.withOpacity(0.4)),
+        ),
+        child: Row(
+          children: [
+            InkWell(
+              onTap: _toggle,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.accent,
+                ),
+                child: Icon(
+                  _playing ? Icons.pause : Icons.play_arrow,
+                  color: Colors.black,
+                  size: 22,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 22,
+                child: AnimatedBuilder(
+                  animation: _wave,
+                  builder: (_, __) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: List.generate(18, (i) {
+                        final base = (i % 3 == 0 ? 0.5 : 0.3) + (i % 5) * 0.08;
+                        final mod = _playing
+                            ? base + 0.25 * _wave.value * (i.isEven ? 1 : -1)
+                            : base;
+                        final h = (mod.clamp(0.15, 1.0)) * 22;
+                        final active = (i / 18) <= progress;
+                        return Expanded(
+                          child: Container(
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 1.0),
+                            height: h,
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? widget.accent
+                                  : widget.accent.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _playing
+                  ? _fmt(_pos)
+                  : '0:0${(totalMs / 1000).floor().clamp(0, 9)}',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

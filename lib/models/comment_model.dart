@@ -11,6 +11,8 @@ class CommentModel {
   final int? authorGoals;
   final String? authorRankLabel;
   final String? authorRankColor;
+  final String? audioUrl;
+  final int? audioDurMs;
   final bool isPele;
   final DateTime createdAt;
   int likes;
@@ -26,6 +28,8 @@ class CommentModel {
     this.authorGoals,
     this.authorRankLabel,
     this.authorRankColor,
+    this.audioUrl,
+    this.audioDurMs,
     required this.isPele,
     required this.createdAt,
     required this.likes,
@@ -34,7 +38,7 @@ class CommentModel {
   factory CommentModel.fromJson(Map<String, dynamic> j) => CommentModel(
         id: (j['id'] as num).toInt(),
         sala: j['sala'] as String,
-        body: j['body'] as String,
+        body: j['body'] as String? ?? '',
         playerName: j['player_name'] as String,
         playerPhoto: j['player_photo'] as String,
         authorName: j['author_name'] as String?,
@@ -42,11 +46,15 @@ class CommentModel {
         authorGoals: (j['author_goals'] as num?)?.toInt(),
         authorRankLabel: j['author_rank_label'] as String?,
         authorRankColor: j['author_rank_color'] as String?,
+        audioUrl: j['audio_url'] as String?,
+        audioDurMs: (j['audio_dur_ms'] as num?)?.toInt(),
         isPele: j['is_pele'] as bool? ?? false,
         createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ??
             DateTime.now(),
         likes: (j['likes'] as num?)?.toInt() ?? 0,
       );
+
+  bool get hasAudio => audioUrl != null && audioUrl!.isNotEmpty;
 
   String get timeAgo {
     final diff = DateTime.now().difference(createdAt);

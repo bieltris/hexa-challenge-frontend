@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -11,6 +13,7 @@ import '../models/comment_model.dart';
 import '../models/mission_model.dart';
 import '../services/api_service.dart';
 import '../services/duel_socket_service.dart';
+import '../widgets/audio_recorder_button.dart';
 import '../widgets/comment_card.dart';
 import '../widgets/mission_card.dart';
 import '../widgets/rank_badge.dart';
@@ -1058,6 +1061,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
+            // Botão mic — gravar áudio
+            if (_loginSala.isNotEmpty && _loginName.isNotEmpty && !_posting)
+              AudioRecorderButton(
+                size: 36,
+                idleColor: const Color(0xFF009C3B),
+                onRecorded: _sendAudioComment,
+              ),
+
             // Botão enviar
             _posting
                 ? const SizedBox(
@@ -1075,6 +1086,29 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _sendAudioComment(
+      Uint8List bytes, int durMs, String mime) async {
+    if (_posting || _loginSala.isEmpty || _loginName.isEmpty) return;
+    setState(() => _posting = true);
+    try {
+      await ApiService.postAudioComment(
+        sala: _loginSala,
+        name: _loginName,
+        bytes: bytes,
+        durMs: durMs,
+        mime: mime,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao enviar áudio: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _posting = false);
+    }
   }
 }
 
