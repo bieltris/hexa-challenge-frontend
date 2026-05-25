@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 
-/// Botão de microfone com gravação long-press até 5s.
-/// Solta = chama [onRecorded] com bytes do áudio + duração em ms + mime.
+/// Botão de microfone com gravação tap-once até 5s.
+/// Visual: anel de progresso 360° conforme tempo passa.
+/// Tap durante gravação = stop imediato.
 class AudioRecorderButton extends StatefulWidget {
   final void Function(Uint8List bytes, int durMs, String mime) onRecorded;
   final double size;
@@ -27,7 +28,7 @@ class AudioRecorderButton extends StatefulWidget {
 class _AudioRecorderButtonState extends State<AudioRecorderButton>
     with SingleTickerProviderStateMixin {
   static const int _maxMs = 5000;
-  static const int _minMs = 500;
+  static const int _minMs = 300;
 
   final _rec = AudioRecorder();
   String? _path;
@@ -37,53 +38,50 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
   bool _recording = false;
   int _elapsedMs = 0;
 
-  late AnimationController _pulseCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat(reverse: true);
-  }
-
   @override
   void dispose() {
-    _pulseCtrl.dispose();
     _autoStopTimer?.cancel();
     _tickTimer?.cancel();
     _rec.dispose();
     super.dispose();
   }
 
+  Future<void> _onTap() async {
+    if (_recording) {
+      await _stop();
+    } else {
+      await _start();
+    }
+  }
+
   Future<void> _start() async {
     if (_recording) return;
-    // Encoder: web suporta opus melhor; mobile aac. AAC funciona em ambos via record.
     final config = const RecordConfig(
       encoder: AudioEncoder.aacLc,
       bitRate: 64000,
       sampleRate: 44100,
       numChannels: 1,
     );
-    // Web: path é ignorado (blob URL gerado internamente). Mobile: precisa path.
     final path = kIsWeb
         ? ''
         : '/tmp/cartolina_audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    // Chama start direto — browser exibe popup nativo se permissão = prompt.
-    // hasPermission() retorna false em estado 'prompt' sem perguntar, por isso pulamos.
+
+    // Chama start direto dentro do gesto do usuário — browser dispara
+    // popup nativo de permissão se estado = 'prompt'. iOS Safari só pede
+    // permissão durante gesto direto, sem awaits intermediários.
     try {
       await _rec.start(config, path: path);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          'Sem acesso ao microfone. Autorize nas configurações do navegador.',
+          'Sem acesso ao microfone. Toque novamente para tentar ou autorize nas configurações do navegador.',
         ),
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 4),
       ));
       return;
     }
+
     if (!mounted) return;
     setState(() {
       _path = path;
@@ -91,8 +89,9 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
       _startedAt = DateTime.now();
       _elapsedMs = 0;
     });
+
     _autoStopTimer = Timer(const Duration(milliseconds: _maxMs), _stop);
-    _tickTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+    _tickTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
       if (!mounted) return;
       setState(() {
         _elapsedMs = DateTime.now().difference(_startedAt!).inMilliseconds;
@@ -111,7 +110,7 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
     final durMs = DateTime.now().difference(_startedAt!).inMilliseconds;
     if (durMs < _minMs) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Segure para gravar (mínimo 0.5s)'),
+        content: Text('Áudio muito curto (mínimo 0.3s)'),
       ));
       if (!kIsWeb) {
         try {
@@ -125,7 +124,6 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
       Uint8List bytes;
       String mime;
       if (kIsWeb) {
-        // finalPath é blob URL — fetch via http
         final res = await http.get(Uri.parse(finalPath));
         bytes = res.bodyBytes;
         mime = res.headers['content-type'] ?? 'audio/webm';
@@ -147,67 +145,86 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
 
   @override
   Widget build(BuildContext context) {
-    final remaining = _recording
+    final progress = _recording ? (_elapsedMs / _maxMs).clamp(0.0, 1.0) : 0.0;
+    final remainingSec = _recording
         ? (((_maxMs - _elapsedMs) / 1000).ceil()).clamp(0, 5)
         : null;
 
     return GestureDetector(
-      onLongPressStart: (_) => _start(),
-      onLongPressEnd: (_) => _stop(),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Segure o botão para gravar (até 5s)'),
-          duration: Duration(seconds: 1),
-        ));
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _recording
-                  ? Colors.red.withOpacity(0.85)
-                  : Colors.transparent,
-              boxShadow: _recording
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.45 + _pulseCtrl.value * 0.3),
-                        blurRadius: 16,
-                        spreadRadius: 4,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Icon(
-              _recording ? Icons.fiber_manual_record : Icons.mic,
-              color: _recording ? Colors.white : widget.idleColor,
-              size: widget.size * 0.55,
-            ),
-          ),
-          if (_recording)
-            Positioned(
-              bottom: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${remaining}s',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+      onTap: _onTap,
+      child: SizedBox(
+        width: widget.size + 12,
+        height: widget.size + 12,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Anel de progresso (countdown visual)
+            if (_recording)
+              SizedBox(
+                width: widget.size + 8,
+                height: widget.size + 8,
+                child: CircularProgressIndicator(
+                  value: 1.0 - progress, // diminui conforme tempo passa
+                  strokeWidth: 3,
+                  backgroundColor: Colors.red.withOpacity(0.18),
+                  valueColor: AlwaysStoppedAnimation(
+                    progress < 0.6
+                        ? const Color(0xFF00D45B)
+                        : progress < 0.85
+                            ? const Color(0xFFFFDF00)
+                            : Colors.redAccent,
                   ),
                 ),
               ),
+            // Círculo do botão
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _recording
+                    ? Colors.red.withOpacity(0.88)
+                    : Colors.transparent,
+                boxShadow: _recording
+                    ? [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.45),
+                          blurRadius: 14,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                _recording ? Icons.stop_rounded : Icons.mic,
+                color: _recording ? Colors.white : widget.idleColor,
+                size: widget.size * 0.55,
+              ),
             ),
-        ],
+            // Contador de segundos
+            if (_recording && remainingSec != null)
+              Positioned(
+                bottom: -6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${remainingSec}s',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
