@@ -1,12 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:record/record.dart';
-import '../utils/ua_helper.dart'
-    if (dart.library.html) '../utils/ua_helper_web.dart';
+import '../platform/mic_recorder.dart';
 
 /// Botão de microfone com gravação tap-once até 5s.
 /// Visual: anel de progresso 360° conforme tempo passa.
@@ -32,8 +27,7 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
   static const int _maxMs = 5000;
   static const int _minMs = 300;
 
-  final _rec = AudioRecorder();
-  String? _path;
+  final _mic = MicRecorder();
   DateTime? _startedAt;
   Timer? _autoStopTimer;
   Timer? _tickTimer;
@@ -44,7 +38,7 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
   void dispose() {
     _autoStopTimer?.cancel();
     _tickTimer?.cancel();
-    _rec.dispose();
+    _mic.dispose();
     super.dispose();
   }
 
@@ -58,36 +52,14 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
 
   Future<void> _start() async {
     if (_recording) return;
-
-    // Chrome/Firefox (desktop e Android) → WebM/Opus.
-    // Safari (macOS/iOS) e plataformas nativas → AAC/MP4.
-    // AudioEncoder.aacLc em Chrome lança exceção "MIME type not supported"
-    // que o catch abaixo interpretava erroneamente como "sem permissão".
-    final encoder =
-        (kIsWeb && !isSafari()) ? AudioEncoder.opus : AudioEncoder.aacLc;
-
-    final config = RecordConfig(
-      encoder: encoder,
-      bitRate: 64000,
-      sampleRate: 44100,
-      numChannels: 1,
-    );
-    final path = kIsWeb
-        ? ''
-        : '/tmp/cartolina_audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-    // Chama start direto dentro do gesto do usuário — browser dispara
-    // popup nativo de permissão se estado = 'prompt'. iOS Safari só pede
-    // permissão durante gesto direto, sem awaits intermediários.
     try {
-      await _rec.start(config, path: path);
+      await _mic.start();
     } catch (e) {
       if (!mounted) return;
-      final errStr = e.toString().toLowerCase();
-      final isPermission = errStr.contains('permission') ||
-          errStr.contains('notallowed') ||
-          errStr.contains('denied') ||
-          errStr.contains('acesso');
+      final err = e.toString().toLowerCase();
+      final isPermission = err.contains('notallowed') ||
+          err.contains('permission') ||
+          err.contains('denied');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           isPermission
@@ -101,7 +73,6 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
 
     if (!mounted) return;
     setState(() {
-      _path = path;
       _recording = true;
       _startedAt = DateTime.now();
       _elapsedMs = 0;
@@ -120,44 +91,31 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
     if (!_recording) return;
     _autoStopTimer?.cancel();
     _tickTimer?.cancel();
-    final finalPath = await _rec.stop();
+    final durMs = DateTime.now().difference(_startedAt!).inMilliseconds;
+
+    ({Uint8List bytes, String mime}) result;
+    try {
+      result = await _mic.stop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _recording = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao processar áudio: $e')),
+      );
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _recording = false);
-    if (finalPath == null) return;
-    final durMs = DateTime.now().difference(_startedAt!).inMilliseconds;
+
     if (durMs < _minMs) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Áudio muito curto (mínimo 0.3s)'),
       ));
-      if (!kIsWeb) {
-        try {
-          await File(finalPath).delete();
-        } catch (_) {}
-      }
       return;
     }
 
-    try {
-      Uint8List bytes;
-      String mime;
-      if (kIsWeb) {
-        final res = await http.get(Uri.parse(finalPath));
-        bytes = res.bodyBytes;
-        mime = res.headers['content-type'] ?? 'audio/webm';
-      } else {
-        bytes = await File(finalPath).readAsBytes();
-        mime = 'audio/mp4';
-        try {
-          await File(finalPath).delete();
-        } catch (_) {}
-      }
-      widget.onRecorded(bytes, durMs.clamp(_minMs, _maxMs), mime);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao processar áudio: $e')),
-      );
-    }
+    widget.onRecorded(result.bytes, durMs.clamp(_minMs, _maxMs), result.mime);
   }
 
   @override
@@ -181,7 +139,7 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
                 width: widget.size + 8,
                 height: widget.size + 8,
                 child: CircularProgressIndicator(
-                  value: 1.0 - progress, // diminui conforme tempo passa
+                  value: 1.0 - progress,
                   strokeWidth: 3,
                   backgroundColor: Colors.red.withOpacity(0.18),
                   valueColor: AlwaysStoppedAnimation(
@@ -219,7 +177,7 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
                 size: widget.size * 0.55,
               ),
             ),
-            // Contador de segundos
+            // Contador de segundos restantes
             if (_recording && remainingSec != null)
               Positioned(
                 bottom: -6,
