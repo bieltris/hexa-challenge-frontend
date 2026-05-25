@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
+import '../utils/ua_helper.dart'
+    if (dart.library.html) '../utils/ua_helper_web.dart';
 
 /// Botão de microfone com gravação tap-once até 5s.
 /// Visual: anel de progresso 360° conforme tempo passa.
@@ -56,8 +58,16 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
 
   Future<void> _start() async {
     if (_recording) return;
-    final config = const RecordConfig(
-      encoder: AudioEncoder.aacLc,
+
+    // Chrome/Firefox (desktop e Android) → WebM/Opus.
+    // Safari (macOS/iOS) e plataformas nativas → AAC/MP4.
+    // AudioEncoder.aacLc em Chrome lança exceção "MIME type not supported"
+    // que o catch abaixo interpretava erroneamente como "sem permissão".
+    final encoder =
+        (kIsWeb && !isSafari()) ? AudioEncoder.opus : AudioEncoder.aacLc;
+
+    final config = RecordConfig(
+      encoder: encoder,
       bitRate: 64000,
       sampleRate: 44100,
       numChannels: 1,
@@ -73,11 +83,18 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
       await _rec.start(config, path: path);
     } catch (e) {
       if (!mounted) return;
+      final errStr = e.toString().toLowerCase();
+      final isPermission = errStr.contains('permission') ||
+          errStr.contains('notallowed') ||
+          errStr.contains('denied') ||
+          errStr.contains('acesso');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          'Sem acesso ao microfone. Toque novamente para tentar ou autorize nas configurações do navegador.',
+          isPermission
+              ? 'Sem acesso ao microfone. Autorize nas configurações do navegador e recarregue a página.'
+              : 'Erro ao iniciar gravação: $e',
         ),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
       ));
       return;
     }
