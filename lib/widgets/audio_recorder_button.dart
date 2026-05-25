@@ -57,26 +57,8 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
     super.dispose();
   }
 
-  Future<bool> _ensurePermission() async {
-    // Web: browser pede permissão na primeira chamada de getUserMedia.
-    // record.hasPermission() funciona cross-platform.
-    try {
-      return await _rec.hasPermission();
-    } catch (_) {
-      return false;
-    }
-  }
-
   Future<void> _start() async {
     if (_recording) return;
-    final ok = await _ensurePermission();
-    if (!ok) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Permissão de microfone negada'),
-      ));
-      return;
-    }
     // Encoder: web suporta opus melhor; mobile aac. AAC funciona em ambos via record.
     final config = const RecordConfig(
       encoder: AudioEncoder.aacLc,
@@ -88,7 +70,20 @@ class _AudioRecorderButtonState extends State<AudioRecorderButton>
     final path = kIsWeb
         ? ''
         : '/tmp/cartolina_audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _rec.start(config, path: path);
+    // Chama start direto — browser exibe popup nativo se permissão = prompt.
+    // hasPermission() retorna false em estado 'prompt' sem perguntar, por isso pulamos.
+    try {
+      await _rec.start(config, path: path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          'Sem acesso ao microfone. Autorize nas configurações do navegador.',
+        ),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _path = path;

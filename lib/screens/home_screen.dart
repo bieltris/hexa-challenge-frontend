@@ -1025,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Campo de texto
             Expanded(
